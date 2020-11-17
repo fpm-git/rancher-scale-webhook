@@ -51,7 +51,8 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
 				async with session.post(node['actions']['cordon']) as resp:
 					print(f"cordon node rancher api status: {resp.status}")
 					cordon = await resp.text()
-				async with session.post(node['actions']['drain']) as resp:
+				drain_payload = { "deleteLocalData": false, "force": false, "gracePeriod": -1, "ignoreDaemonSets": null, "timeout": '120' }
+				async with session.post(node['actions']['drain'], data=drain_payload) as resp:
 					print(f"drain node rancher api status: {resp.status}")
 					drain = await resp.text()
 					return True
