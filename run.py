@@ -21,10 +21,13 @@ async def try_uncordon_node_of_nodepool(nodes):
 	async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=RANCHER_VERIFY_SSL),
 									 headers={"Authorization": f"Bearer {RANCHER_TOKEN}"}) as session:
 		async with session.get(f'{nodes}&order=desc&sort=state') as resp:
-			print(f"try_uncordon_node_of_nodepool rancher api status: {resp.status}")
+			print(f"Attempting to add node. Get node pool rancher api status: {resp.status}")
 			list_nodes = await resp.json()
 			for node in list_nodes['data']:
-				if node['state'] == "drained":
+				if node['transitioning'] == "yes":
+					print('Found transitioning node')
+					return True
+				if node['state'] == "drained" or node['state'] == "cordoned":
 					async with session.post(node['actions']['uncordon']) as resp:
 						print(f"uncordon node rancher api status: {resp.status}")
 						uncordon = await resp.text()
@@ -39,7 +42,7 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
 	async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=RANCHER_VERIFY_SSL),
 									 headers={"Authorization": f"Bearer {RANCHER_TOKEN}"}) as session:
 		async with session.get(f'{nodes}&order=desc&sort=hostname') as resp:
-			print(f"Get node pool rancher api status: {resp.status}")
+			print(f"Attempting to remove node. Get node pool rancher api status: {resp.status}")
 			list_nodes = await resp.json()
 			# check status if only one VM is transitioning, stop scale down (scaling happened?)
 			for node in list_nodes['data']:
@@ -102,7 +105,8 @@ async def scale_up(request):
 	# check if we have Cordoned node
 	uncordon_node = await try_uncordon_node_of_nodepool(pool['links']['nodes'])
 	if uncordon_node:
-		print(f"scale up --> save time, uncordon node")
+		print(f"Not scaling up, waiting for next message...")
+		print(f"")
 		return request.Response(text='ok')
 	old = pool['quantity']
 	pool['quantity'] = pool['quantity'] + 1
