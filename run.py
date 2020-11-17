@@ -127,6 +127,7 @@ async def scale_down(request):
 	cordon_node = await try_cordon_last_node_of_nodepool(pool['links']['nodes'], pool['hostnamePrefix'])
 	if cordon_node:
 		print(f"Not scaling down, waiting for next message...")
+		print(f"")
 		return request.Response(text='ok')
 	old = pool['quantity']
 	pool['quantity'] = pool['quantity'] - 1
