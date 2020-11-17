@@ -8,7 +8,7 @@ TOKEN = os.getenv('TOKEN', 'SECRET_TOKEN')
 RANCHER_NODEPOOL_URL = os.getenv('RANCHER_NODEPOOL_URL', None)
 RANCHER_VERIFY_SSL = bool(int(os.getenv('RANCHER_VERIFY_SSL', '0')))
 RANCHER_TOKEN = os.getenv('RANCHER_TOKEN', None)
-RANCHER_CORDONED_CPU = int(os.getenv('RANCHER_CORDONED_CPU', '10'))
+RANCHER_CORDONED_CPU = int(os.getenv('RANCHER_CORDONED_CPU', '20'))
 RANCHER_VM_MAX = int(os.getenv('RANCHER_VM_MAX', '10'))
 RANCHER_VM_MIN = int(os.getenv('RANCHER_VM_MIN', '0'))
 if RANCHER_NODEPOOL_URL is None:
@@ -47,20 +47,21 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
 					print('found transitioning node')
 					return True
 			node = list_nodes['data'][0]
+			print(f"node state: {node['state']}")
 			if node['state'] == "active":
-				async with session.post(node['actions']['cordon']) as resp:
-					print(f"cordon node rancher api status: {resp.status}")
-					cordon = await resp.text()
 				drain_payload = { "deleteLocalData": 'true', "force": 'true', "gracePeriod": -1, "ignoreDaemonSets": '', "timeout": '120' }
 				async with session.post(node['actions']['drain'], data=drain_payload) as resp:
 					print(f"drain node rancher api status: {resp.status}")
 					drain = await resp.text()
 					return True
-			elif node['state'] == "cordoned":
+			elif node['state'] == "drained":
 				# remove cordoned node if < RANCHER_CORDONED_CPU
 				capacity = int(node['capacity']['cpu']) * 1000
 				requested = int(node['requested']['cpu'].replace("m", ""))
 				percent = requested/capacity * 100
+				print(f"capacity: {capacity}")
+				print(f"requested: {requested}")
+				print(f"percent: {percent}")
 				if percent <= RANCHER_CORDONED_CPU:
 					return False
 	return True
