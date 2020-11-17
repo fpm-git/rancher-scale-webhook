@@ -8,7 +8,7 @@ TOKEN = os.getenv('TOKEN', 'SECRET_TOKEN')
 RANCHER_NODEPOOL_URL = os.getenv('RANCHER_NODEPOOL_URL', None)
 RANCHER_VERIFY_SSL = bool(int(os.getenv('RANCHER_VERIFY_SSL', '0')))
 RANCHER_TOKEN = os.getenv('RANCHER_TOKEN', None)
-RANCHER_CORDONED_CPU = int(os.getenv('RANCHER_CORDONED_CPU', '5'))
+RANCHER_CORDONED_CPU = int(os.getenv('RANCHER_CORDONED_CPU', '10'))
 RANCHER_VM_MAX = int(os.getenv('RANCHER_VM_MAX', '10'))
 RANCHER_VM_MIN = int(os.getenv('RANCHER_VM_MIN', '0'))
 if RANCHER_NODEPOOL_URL is None:
@@ -18,7 +18,7 @@ if RANCHER_NODEPOOL_URL is None:
 async def try_uncordon_node_of_nodepool(nodes):
 	global RANCHER_TOKEN
 	global RANCHER_VERIFY_SSL
-	async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=RANCHER_VERIFY_SSL),
+	async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=RANCHER_VERIFY_SSL),
 									 headers={"Authorization": f"Bearer {RANCHER_TOKEN}"}) as session:
 		async with session.get(f'{nodes}&order=desc&sort=state') as resp:
 			print(f"try_uncordon_node_of_nodepool rancher api status: {resp.status}")
@@ -36,7 +36,7 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
 	global RANCHER_TOKEN
 	global RANCHER_VERIFY_SSL
 	global RANCHER_VM_MIN
-	async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=RANCHER_VERIFY_SSL),
+	async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=RANCHER_VERIFY_SSL),
 									 headers={"Authorization": f"Bearer {RANCHER_TOKEN}"}) as session:
 		async with session.get(f'{nodes}&order=desc&sort=hostname') as resp:
 			print(f"try_cordon_last_node_of_nodepool rancher api status: {resp.status}")
@@ -51,7 +51,7 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
 				async with session.post(node['actions']['cordon']) as resp:
 					print(f"cordon node rancher api status: {resp.status}")
 					cordon = await resp.text()
-				drain_payload = { "deleteLocalData": false, "force": false, "gracePeriod": -1, "ignoreDaemonSets": null, "timeout": '120' }
+				drain_payload = { "deleteLocalData": 'true', "force": 'true', "gracePeriod": -1, "ignoreDaemonSets": '', "timeout": '120' }
 				async with session.post(node['actions']['drain'], data=drain_payload) as resp:
 					print(f"drain node rancher api status: {resp.status}")
 					drain = await resp.text()
@@ -70,7 +70,7 @@ async def get_nodepool():
 	global RANCHER_NODEPOOL_URL
 	global RANCHER_TOKEN
 	global RANCHER_VERIFY_SSL
-	async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=RANCHER_VERIFY_SSL),
+	async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=RANCHER_VERIFY_SSL),
 									 headers={"Authorization": f"Bearer {RANCHER_TOKEN}"}) as session:
 		async with session.get(RANCHER_NODEPOOL_URL) as resp:
 			print(f"rancher api status: {resp.status}")
@@ -81,7 +81,7 @@ async def set_nodepool(data):
 	global RANCHER_NODEPOOL_URL
 	global RANCHER_TOKEN
 	global RANCHER_VERIFY_SSL
-	async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=RANCHER_VERIFY_SSL),
+	async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=RANCHER_VERIFY_SSL),
 									 headers={"Authorization": f"Bearer {RANCHER_TOKEN}", "Accept": "application/json",
 											  "Content-Type": "application/json"}) as session:
 		async with session.put(RANCHER_NODEPOOL_URL, json=data) as resp:
