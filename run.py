@@ -63,8 +63,9 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
 				print(f"requested: {requested}")
 				print(f"percent: {percent}")
 				if percent <= RANCHER_CORDONED_CPU:
-					print(f"Node too busy to remove, did it fully drain?")
 					return False
+				else:
+					print(f"Node too busy to remove, did it fully drain?")
 	return True
 
 
