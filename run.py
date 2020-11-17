@@ -10,7 +10,7 @@ RANCHER_VERIFY_SSL = bool(int(os.getenv('RANCHER_VERIFY_SSL', '0')))
 RANCHER_TOKEN = os.getenv('RANCHER_TOKEN', None)
 RANCHER_CORDONED_CPU = int(os.getenv('RANCHER_CORDONED_CPU', '5'))
 RANCHER_VM_MAX = int(os.getenv('RANCHER_VM_MAX', '10'))
-RANCHER_VM_MIN = int(os.getenv('RANCHER_VM_MIN', '1'))
+RANCHER_VM_MIN = int(os.getenv('RANCHER_VM_MIN', '0'))
 if RANCHER_NODEPOOL_URL is None:
     print("please set env 'RANCHER_NODEPOOL_URL'")
 
@@ -47,13 +47,13 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
                     print('found transitioning node')
                     return True
             node = list_nodes['data'][0]
-            # check if this server "my-example-server-1" (first server)
-            if node['hostname'] == hostname_prefix + '1':
-                return True
             if node['state'] == "active":
                 async with session.post(node['actions']['cordon']) as resp:
                     print(f"cordon node rancher api status: {resp.status}")
                     cordon = await resp.text()
+				async with session.post(node['actions']['drain']) as resp:
+                    print(f"drain node rancher api status: {resp.status}")
+                    drain = await resp.text()
                     return True
             elif node['state'] == "cordoned":
                 # remove cordoned node if < RANCHER_CORDONED_CPU
