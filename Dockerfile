@@ -1,17 +1,15 @@
-FROM alpine
+FROM python:3
+
+
 
 WORKDIR /src
 
-CMD ["python3", "-um", "japronto", "run.app"]
+COPY requirements.txt .
 
-RUN apk add --update python3
+COPY *.py .
 
-ADD requirements.txt ./
-
-RUN apk add --no-cache --virtual .build-deps build-base python3-dev git py3-pip \
-    && pip3 --no-cache install -r requirements.txt \
-	&& apk del .build-deps \
-	&& rm -rf /var/cache/apk/*
+RUN pip install -r requirements.txt
 
 
-ADD *.py /src/
+CMD [ "python", "./run.py" ]
+
