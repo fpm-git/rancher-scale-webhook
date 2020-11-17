@@ -24,7 +24,7 @@ async def try_uncordon_node_of_nodepool(nodes):
 			print(f"try_uncordon_node_of_nodepool rancher api status: {resp.status}")
 			list_nodes = await resp.json()
 			for node in list_nodes['data']:
-				if node['state'] == "cordoned":
+				if node['state'] == "drained":
 					async with session.post(node['actions']['uncordon']) as resp:
 						print(f"uncordon node rancher api status: {resp.status}")
 						uncordon = await resp.text()
