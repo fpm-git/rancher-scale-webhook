@@ -39,19 +39,19 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
 	async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=RANCHER_VERIFY_SSL),
 									 headers={"Authorization": f"Bearer {RANCHER_TOKEN}"}) as session:
 		async with session.get(f'{nodes}&order=desc&sort=hostname') as resp:
-			print(f"try_cordon_last_node_of_nodepool rancher api status: {resp.status}")
+			print(f"Get node pool rancher api status: {resp.status}")
 			list_nodes = await resp.json()
 			# check status if only one VM is transitioning, stop scale down (scaling happened?)
 			for node in list_nodes['data']:
 				if node['transitioning'] == "yes":
-					print('found transitioning node')
+					print('Found transitioning node')
 					return True
 			node = list_nodes['data'][0]
 			print(f"node state: {node['state']}")
 			if node['state'] == "active":
 				drain_payload = { "deleteLocalData": 'true', "force": 'true', "gracePeriod": -1, "ignoreDaemonSets": '', "timeout": '120' }
 				async with session.post(node['actions']['drain'], data=drain_payload) as resp:
-					print(f"drain node rancher api status: {resp.status}")
+					print(f"Drain node rancher api status: {resp.status}")
 					drain = await resp.text()
 					return True
 			elif node['state'] == "drained":
@@ -63,6 +63,7 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
 				print(f"requested: {requested}")
 				print(f"percent: {percent}")
 				if percent <= RANCHER_CORDONED_CPU:
+					print(f"Node too busy to remove, did it fully drain?")
 					return False
 	return True
 
@@ -124,7 +125,7 @@ async def scale_down(request):
 	# check if we have Cordoned node
 	cordon_node = await try_cordon_last_node_of_nodepool(pool['links']['nodes'], pool['hostnamePrefix'])
 	if cordon_node:
-		print(f"scale down --> save time, cordon node")
+		print(f"Not scaling down, waiting for next message...")
 		return request.Response(text='ok')
 	old = pool['quantity']
 	pool['quantity'] = pool['quantity'] - 1
