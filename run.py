@@ -52,7 +52,7 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
 			node = list_nodes['data'][0]
 			print(f"node state: {node['state']}")
 			if node['state'] == "active":
-				drain_payload = { "deleteLocalData": 'true', "force": 'true', "gracePeriod": -1, "ignoreDaemonSets": '', "timeout": '120' }
+				drain_payload = { "deleteLocalData": 'true', "force": 'true', "gracePeriod": -1, "ignoreDaemonSets": 'true', "timeout": '120' }
 				async with session.post(node['actions']['drain'], data=drain_payload) as resp:
 					print(f"Drain node rancher api status: {resp.status}")
 					drain = await resp.text()
