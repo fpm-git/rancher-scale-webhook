@@ -11,8 +11,8 @@ RANCHER_TOKEN = os.getenv('RANCHER_TOKEN', None)
 RANCHER_CORDONED_CPU = int(os.getenv('RANCHER_CORDONED_CPU', '20'))
 RANCHER_VM_MAX = int(os.getenv('RANCHER_VM_MAX', '10'))
 RANCHER_VM_MIN = int(os.getenv('RANCHER_VM_MIN', '0'))
-IGNORE_DAEMONSETS = int(os.getenv('IGNORE_DAEMONSETS', 'true'))
-FORCE_NODE_REMOVAL = int(os.getenv('FORCE_NODE_REMOVAL', 'true'))
+IGNORE_DAEMONSETS = str(os.getenv('IGNORE_DAEMONSETS', 'true'))
+FORCE_NODE_REMOVAL = str(os.getenv('FORCE_NODE_REMOVAL', 'true'))
 if RANCHER_NODEPOOL_URL is None:
 	print("please set env 'RANCHER_NODEPOOL_URL'")
 
