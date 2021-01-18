@@ -13,6 +13,7 @@ RANCHER_VM_MAX = int(os.getenv('RANCHER_VM_MAX', '10'))
 RANCHER_VM_MIN = int(os.getenv('RANCHER_VM_MIN', '0'))
 IGNORE_DAEMONSETS = str(os.getenv('IGNORE_DAEMONSETS', 'true'))
 FORCE_NODE_REMOVAL = str(os.getenv('FORCE_NODE_REMOVAL', 'true'))
+DELETE_LOCAL_DATA = str(os.getenv('DELETE_LOCAL_DATA', 'false'))
 if RANCHER_NODEPOOL_URL is None:
 	print("please set env 'RANCHER_NODEPOOL_URL'")
 
@@ -54,7 +55,7 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
 			node = list_nodes['data'][0]
 			print(f"node state: {node['state']}")
 			if node['state'] == "active":
-				drain_payload = { "deleteLocalData": 'true', "force": {FORCE_NODE_REMOVAL}, "gracePeriod": -1, "ignoreDaemonSets": {IGNORE_DAEMONSETS}, "timeout": '120' }
+				drain_payload = { "deleteLocalData": {DELETE_LOCAL_DATA}, "force": {FORCE_NODE_REMOVAL}, "gracePeriod": -1, "ignoreDaemonSets": {IGNORE_DAEMONSETS}, "timeout": '120' }
 				async with session.post(node['actions']['drain'], data=drain_payload) as resp:
 					print(f"Drain node rancher api status: {resp.status}")
 					drain = await resp.text()
