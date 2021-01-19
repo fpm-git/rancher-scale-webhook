@@ -2,6 +2,7 @@ import os
 import time
 
 import aiohttp
+import time
 from japronto import Application
 
 TOKEN = os.getenv('TOKEN', 'SECRET_TOKEN')
@@ -11,9 +12,10 @@ RANCHER_TOKEN = os.getenv('RANCHER_TOKEN', None)
 RANCHER_CORDONED_CPU = int(os.getenv('RANCHER_CORDONED_CPU', '20'))
 RANCHER_VM_MAX = int(os.getenv('RANCHER_VM_MAX', '10'))
 RANCHER_VM_MIN = int(os.getenv('RANCHER_VM_MIN', '0'))
-IGNORE_DAEMONSETS = str(os.getenv('IGNORE_DAEMONSETS', 'true'))
-FORCE_NODE_REMOVAL = str(os.getenv('FORCE_NODE_REMOVAL', 'true'))
+IGNORE_DAEMONSETS = str(os.getenv('IGNORE_DAEMONSETS', 'false'))
+FORCE_NODE_REMOVAL = str(os.getenv('FORCE_NODE_REMOVAL', 'false'))
 DELETE_LOCAL_DATA = str(os.getenv('DELETE_LOCAL_DATA', 'false'))
+DRAIN_NODE = str(os.getenv('DRAIN_NODE', 'false'))
 if RANCHER_NODEPOOL_URL is None:
 	print("please set env 'RANCHER_NODEPOOL_URL'")
 
@@ -54,13 +56,30 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
 					return True
 			node = list_nodes['data'][0]
 			print(f"node state: {node['state']}")
-			if node['state'] == "active":
-				drain_payload = { "deleteLocalData": {DELETE_LOCAL_DATA}, "force": {FORCE_NODE_REMOVAL}, "gracePeriod": -1, "ignoreDaemonSets": {IGNORE_DAEMONSETS}, "timeout": '120' }
-				async with session.post(node['actions']['drain'], data=drain_payload) as resp:
-					print(f"Drain node rancher api status: {resp.status}")
-					drain = await resp.text()
-					return True
-			elif node['state'] == "drained":
+			
+			#drain node if flag set true
+			if DRAIN_NODE:
+				if node['state'] == "active":
+					drain_payload = { "deleteLocalData": {DELETE_LOCAL_DATA}, "force": {FORCE_NODE_REMOVAL}, "gracePeriod": -1, "ignoreDaemonSets": {IGNORE_DAEMONSETS}, "timeout": '120' }
+					async with session.post(node['actions']['drain'], data=drain_payload) as resp:
+						print(f"Drain node rancher api status: {resp.status}")
+						drain = await resp.text()
+						return True
+			#otherwise just cordon the node
+			else:
+				if node['state'] == "active":
+					async with session.post(node['actions']['cordon']) as resp:
+						print(f"cordon node rancher api status: {resp.status}")
+						cordon = await resp.text()
+						return True
+						
+			#calculate node age
+			print(f"node creation time: {node['createdTS']}")
+			print(f"current time: {time.time()}")
+			nodeage = node['createdTS'] - time.time()
+			print(f"node age: {nodeage}")
+			
+			if node['state'] == "drained" or node['state'] == "cordoned":
 				# remove cordoned node if < RANCHER_CORDONED_CPU
 				capacity = int(node['capacity']['cpu']) * 1000
 				requested = int(node['requested']['cpu'].replace("m", ""))
@@ -145,6 +164,7 @@ async def scale_down(request):
 
 app = Application()
 r = app.router
+print(f"Starting time {time.time()}"
 
 
 def home(request):
