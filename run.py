@@ -62,7 +62,7 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
 			currenttime=int(str(time.time())[0:10])
 			print(f"node creation time: {nodecreationtime}")
 			print(f"current time: {currenttime}")
-			nodeage = nodecreationtime - currenttime
+			nodeage = currenttime - nodecreationtime
 			print(f"node age: {nodeage}")
 			
 			#drain node if flag set true
