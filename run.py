@@ -16,6 +16,8 @@ IGNORE_DAEMONSETS = str(os.getenv('IGNORE_DAEMONSETS', 'false'))
 FORCE_NODE_REMOVAL = str(os.getenv('FORCE_NODE_REMOVAL', 'false'))
 DELETE_LOCAL_DATA = str(os.getenv('DELETE_LOCAL_DATA', 'false'))
 DRAIN_NODE = str(os.getenv('DRAIN_NODE', 'false'))
+#remove the overhead for vm start up
+MIN_NODE_AGE_SECS = int(os.getenv('MIN_NODE_AGE_SECS', '3600')) - 600
 if RANCHER_NODEPOOL_URL is None:
 	print("please set env 'RANCHER_NODEPOOL_URL'")
 
@@ -81,11 +83,11 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
 						cordon = await resp.text()
 						return True
 			
-			#if nodeage is greater than 50 minutes, continue on
-			if nodeage > 3000:
-				print("Node is older than one hour, good to remove.")
+			#if nodeage is greater than {MIN_NODE_AGE_SECS} , continue on
+			if nodeage > MIN_NODE_AGE_SECS:
+				print(f"Node is older than {MIN_NODE_AGE_SECS} seconds, good to remove.")
 			else:
-				print("Node is yonger than one hour, to remain cordoned/drained for now.")
+				print(f"Node is younger than {MIN_NODE_AGE_SECS} seconds, to remain cordoned/drained for now.")
 				return True
 
 			if node['state'] == "drained" or node['state'] == "cordoned":
