@@ -11,7 +11,6 @@ MIN_NODE_AGE_SECS = 3600 #how old the node must be in seconds before it can be d
 DRAIN_NODE = false #default to false
 ```
 
-DRAIN_NODE
 If DRAIN_NODE is set to true, nodes will be drained.
 If false, nodes will be cordoned.
 
