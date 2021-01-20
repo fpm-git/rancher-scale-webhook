@@ -66,7 +66,7 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
 			print(f"node age: {nodeage}")
 			
 			#drain node if flag set true
-			if DRAIN_NODE == "false":
+			if DRAIN_NODE == "true":
 				if node['state'] == "active":
 					drain_payload = { "deleteLocalData": {DELETE_LOCAL_DATA}, "force": {FORCE_NODE_REMOVAL}, "gracePeriod": -1, "ignoreDaemonSets": {IGNORE_DAEMONSETS}, "timeout": '120' }
 					async with session.post(node['actions']['drain'], data=drain_payload) as resp:
