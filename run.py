@@ -56,6 +56,14 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
 					return True
 			node = list_nodes['data'][0]
 			print(f"node state: {node['state']}")
+
+			#calculate node age
+			nodecreationtime=int(str(node['createdTS'])[0:10])
+			currenttime=int(str(time.time())[0:10])
+			print(f"node creation time: {nodecreationtime}")
+			print(f"current time: {currenttime}")
+			nodeage = nodecreationtime - currenttime
+			print(f"node age: {nodeage}")
 			
 			#drain node if flag set true
 			if DRAIN_NODE:
@@ -72,13 +80,14 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
 						print(f"cordon node rancher api status: {resp.status}")
 						cordon = await resp.text()
 						return True
-						
-			#calculate node age
-			print(f"node creation time: {node['createdTS']}")
-			print(f"current time: {time.time()}")
-			nodeage = node['createdTS'] - time.time()
-			print(f"node age: {nodeage}")
 			
+			#if nodeage is greater than 50 minutes, continue on
+			if nodeage > 3000:
+				print("Node is older than one hour, good to remove.")
+			else:
+				print("Node is yonger than one hour, to remain cordoned/drained for now.")
+				return True
+
 			if node['state'] == "drained" or node['state'] == "cordoned":
 				# remove cordoned node if < RANCHER_CORDONED_CPU
 				capacity = int(node['capacity']['cpu']) * 1000
@@ -164,7 +173,7 @@ async def scale_down(request):
 
 app = Application()
 r = app.router
-print(f"Starting time {time.time()}"
+print(f"Starting time {time.time()}")
 
 
 def home(request):
