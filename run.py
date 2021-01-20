@@ -15,7 +15,7 @@ RANCHER_VM_MIN = int(os.getenv('RANCHER_VM_MIN', '0'))
 IGNORE_DAEMONSETS = str(os.getenv('IGNORE_DAEMONSETS', 'false'))
 FORCE_NODE_REMOVAL = str(os.getenv('FORCE_NODE_REMOVAL', 'false'))
 DELETE_LOCAL_DATA = str(os.getenv('DELETE_LOCAL_DATA', 'false'))
-DRAIN_NODE = str(os.getenv('DRAIN_NODE', 'false'))
+DRAIN_NODE = bool(os.getenv('DRAIN_NODE', 'false'))
 if RANCHER_NODEPOOL_URL is None:
 	print("please set env 'RANCHER_NODEPOOL_URL'")
 
