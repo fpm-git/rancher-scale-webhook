@@ -133,12 +133,13 @@ async def scale_up(request):
 	global RANCHER_VM_MAX
 	if request.match_dict['token'] != TOKEN:
 		print(f"token '{request.match_dict['token']}' not valid")
+		print("")
 		return request.Response(text='ok')
 	pool = await get_nodepool()
 	# check if we have Cordoned node
 	uncordoned_node = await try_uncordon_node_of_nodepool(pool['links']['nodes'])
 	if uncordoned_node:
-		print(f"Not scaling up, uncordoning node instead. Waiting for next message...")
+		print(f"Not scaling up, Waiting for next message...")
 		print(f"")
 		return request.Response(text='ok')
 	old = pool['quantity']
@@ -155,10 +156,12 @@ async def scale_down(request):
 	global TOKEN
 	if request.match_dict['token'] != TOKEN:
 		print(f"token '{request.match_dict['token']}' not valid")
+		print("")
 		return request.Response(text='ok')
 	pool = await get_nodepool()
 	if pool['quantity'] <= RANCHER_VM_MIN:
 		print(f'quantity <= {RANCHER_VM_MIN}')
+		print("")
 		return request.Response(text='ok')
 	# check if we have Cordoned node
 	cordoned_node = await try_cordon_last_node_of_nodepool(pool['links']['nodes'], pool['hostnamePrefix'])
