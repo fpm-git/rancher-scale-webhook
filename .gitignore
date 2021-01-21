@@ -54,3 +54,5 @@ fabric.properties
 .idea/httpRequests
 *.iml
 
+.vscode/.ropeproject/objectdb
+.vscode/.ropeproject/config.py
