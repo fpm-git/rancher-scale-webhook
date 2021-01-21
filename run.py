@@ -136,9 +136,9 @@ async def scale_up(request):
 		return request.Response(text='ok')
 	pool = await get_nodepool()
 	# check if we have Cordoned node
-	uncordon_node = await try_uncordon_node_of_nodepool(pool['links']['nodes'])
-	if uncordon_node:
-		print(f"Not scaling up, waiting for next message...")
+	uncordoned_node = await try_uncordon_node_of_nodepool(pool['links']['nodes'])
+	if uncordoned_node:
+		print(f"Not scaling up, uncordoning node instead. Waiting for next message...")
 		print(f"")
 		return request.Response(text='ok')
 	old = pool['quantity']
@@ -161,9 +161,9 @@ async def scale_down(request):
 		print(f'quantity <= {RANCHER_VM_MIN}')
 		return request.Response(text='ok')
 	# check if we have Cordoned node
-	cordon_node = await try_cordon_last_node_of_nodepool(pool['links']['nodes'], pool['hostnamePrefix'])
-	if cordon_node:
-		print(f"Not scaling down, waiting for next message...")
+	cordoned_node = await try_cordon_last_node_of_nodepool(pool['links']['nodes'], pool['hostnamePrefix'])
+	if cordoned_node:
+		print(f"Not scaling down, cordoning node instead. Waiting for next message...")
 		print(f"")
 		return request.Response(text='ok')
 	old = pool['quantity']
