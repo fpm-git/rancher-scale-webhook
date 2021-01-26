@@ -18,6 +18,7 @@ DELETE_LOCAL_DATA = str(os.getenv('DELETE_LOCAL_DATA', 'false'))
 DRAIN_NODE = str(os.getenv('DRAIN_NODE', 'false'))
 #remove the overhead for vm start up
 MIN_NODE_AGE_SECS = int(os.getenv('MIN_NODE_AGE_SECS', '3600')) - 600
+SLACK_URL = str(os.getenv('SLACK_URL', None)
 if RANCHER_NODEPOOL_URL is None:
 	print("please set env 'RANCHER_NODEPOOL_URL'")
 
@@ -33,13 +34,14 @@ async def try_uncordon_node_of_nodepool(nodes):
 			for node in list_nodes['data']:
 				if node['transitioning'] == "yes":
 					print('Found transitioning node')
-					return True
+					return True, "Found transitioning node"
 				if node['state'] == "drained" or node['state'] == "cordoned":
 					async with session.post(node['actions']['uncordon']) as resp:
 						print(f"uncordon node rancher api status: {resp.status}")
+						message "uncordon node rancher api status: {resp.status}"
 						uncordon = await resp.text()
-						return True
-	return False
+						return True, message
+	return False, "Adding node"
 
 
 async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
@@ -55,7 +57,7 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
 			for node in list_nodes['data']:
 				if node['transitioning'] == "yes":
 					print('Found transitioning node')
-					return True
+					return True, "Found transitioning node"
 			node = list_nodes['data'][0]
 			print(f"node state: {node['state']}")
 
@@ -73,22 +75,26 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
 					drain_payload = { "deleteLocalData": {DELETE_LOCAL_DATA}, "force": {FORCE_NODE_REMOVAL}, "gracePeriod": -1, "ignoreDaemonSets": {IGNORE_DAEMONSETS}, "timeout": '120' }
 					async with session.post(node['actions']['drain'], data=drain_payload) as resp:
 						print(f"Drain node rancher api status: {resp.status}")
+						message = "Draining active node"
 						drain = await resp.text()
-						return True
+						return True, message
 			#otherwise just cordon the node
 			else:
 				if node['state'] == "active":
 					async with session.post(node['actions']['cordon']) as resp:
 						print(f"cordon node rancher api status: {resp.status}")
+						message = "Cordoning active node"
 						cordon = await resp.text()
-						return True
+						return True, message
 			
 			#if nodeage is greater than {MIN_NODE_AGE_SECS} , continue on
 			if nodeage > MIN_NODE_AGE_SECS:
 				print(f"Node is older than {MIN_NODE_AGE_SECS} seconds, good to remove.")
+				message = "Node is older than {MIN_NODE_AGE_SECS} seconds, good to remove."
 			else:
 				print(f"Node is younger than {MIN_NODE_AGE_SECS} seconds, to remain cordoned/drained for now.")
-				return True
+				message = "Node is younger than {MIN_NODE_AGE_SECS} seconds, to remain cordoned/drained for now."
+				return True, message
 
 			if node['state'] == "drained" or node['state'] == "cordoned":
 				# remove cordoned node if < RANCHER_CORDONED_CPU
@@ -99,10 +105,10 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
 				print(f"requested: {requested}")
 				print(f"percent: {percent}")
 				if percent <= RANCHER_CORDONED_CPU:
-					return False
+					return False , "Removing node"
 				else:
 					print(f"Node too busy to remove, did it fully drain?")
-	return True
+	return True , "Node not removed"
 
 
 async def get_nodepool():
@@ -137,8 +143,9 @@ async def scale_up(request):
 		return request.Response(text='ok')
 	pool = await get_nodepool()
 	# check if we have Cordoned node
-	uncordoned_node = await try_uncordon_node_of_nodepool(pool['links']['nodes'])
+	uncordoned_node, message = await try_uncordon_node_of_nodepool(pool['links']['nodes'])
 	if uncordoned_node:
+		print(f"{message}")
 		print(f"Not scaling up, Waiting for next message...")
 		print(f"")
 		return request.Response(text='ok')
@@ -164,8 +171,11 @@ async def scale_down(request):
 		print("")
 		return request.Response(text='ok')
 	# check if we have Cordoned node
-	cordoned_node = await try_cordon_last_node_of_nodepool(pool['links']['nodes'], pool['hostnamePrefix'])
+	cordoned_node, message = await try_cordon_last_node_of_nodepool(pool['links']['nodes'], pool['hostnamePrefix'])
+	slack = Slack(url='{SLACK_URL}')
+	slack.post(text=message)
 	if cordoned_node:
+		print(f"{message}")
 		print(f"Not scaling down, cordoning node instead. Waiting for next message...")
 		print(f"")
 		return request.Response(text='ok')
