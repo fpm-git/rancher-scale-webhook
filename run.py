@@ -3,6 +3,7 @@ import time
 
 import aiohttp
 import time
+from slack_webhook import Slack
 from japronto import Application
 
 TOKEN = os.getenv('TOKEN', 'SECRET_TOKEN')
@@ -38,7 +39,7 @@ async def try_uncordon_node_of_nodepool(nodes):
 				if node['state'] == "drained" or node['state'] == "cordoned":
 					async with session.post(node['actions']['uncordon']) as resp:
 						print(f"uncordon node rancher api status: {resp.status}")
-						message "uncordon node rancher api status: {resp.status}"
+						message = "uncordon node rancher api status: "+str(resp.status)
 						uncordon = await resp.text()
 						return True, message
 	return False, "Adding node"
@@ -90,10 +91,10 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
 			#if nodeage is greater than {MIN_NODE_AGE_SECS} , continue on
 			if nodeage > MIN_NODE_AGE_SECS:
 				print(f"Node is older than {MIN_NODE_AGE_SECS} seconds, good to remove.")
-				message = "Node is older than {MIN_NODE_AGE_SECS} seconds, good to remove."
+				message = "Node is older than "+str(MIN_NODE_AGE_SECS)+" seconds, good to remove."
 			else:
 				print(f"Node is younger than {MIN_NODE_AGE_SECS} seconds, to remain cordoned/drained for now.")
-				message = "Node is younger than {MIN_NODE_AGE_SECS} seconds, to remain cordoned/drained for now."
+				message = "Node is younger than "+str(MIN_NODE_AGE_SECS)+" seconds, to remain cordoned/drained for now."
 				return True, message
 
 			if node['state'] == "drained" or node['state'] == "cordoned":
@@ -107,7 +108,8 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
 				if percent <= RANCHER_CORDONED_CPU:
 					return False , "Removing node"
 				else:
-					print(f"Node too busy to remove, did it fully drain?")
+					print(f"Node too busy to remove")
+					return True , "Node too busy to remove"
 	return True , "Node not removed"
 
 
@@ -138,22 +140,25 @@ async def scale_up(request):
 	global TOKEN
 	global RANCHER_VM_MAX
 	if request.match_dict['token'] != TOKEN:
-		print(f"token '{request.match_dict['token']}' not valid")
-		print("")
+		print(f"token '{request.match_dict['token']}' not valid\n")
 		return request.Response(text='ok')
 	pool = await get_nodepool()
 	# check if we have Cordoned node
 	uncordoned_node, message = await try_uncordon_node_of_nodepool(pool['links']['nodes'])
+	print(f"{message}")
+	slack = Slack(url=SLACK_URL)
 	if uncordoned_node:
-		print(f"{message}")
-		print(f"Not scaling up, Waiting for next message...")
-		print(f"")
+		print(f"Not scaling up, Waiting for next message...\n")
+		slack.post(text="Autoscaler message: "+message+ "\nNot scaling up, Waiting for next message...")
 		return request.Response(text='ok')
 	old = pool['quantity']
 	pool['quantity'] = pool['quantity'] + 1
 	# limit maximum VMs
 	if RANCHER_VM_MAX + 1 <= pool['quantity']:
+		print(f"Not scaling up, at maximum number of nodes\n")
+		slack.post(text="Autoscaler message: "+message+ "\nNot scaling up, at maximum number of nodes")
 		return request.Response(text='ok')
+	slack.post(text="Autoscaler message: "+message)
 	print(f"scale up {old} --> {pool['quantity']}")
 	await set_nodepool(pool)
 	return request.Response(text='ok')
@@ -162,22 +167,20 @@ async def scale_up(request):
 async def scale_down(request):
 	global TOKEN
 	if request.match_dict['token'] != TOKEN:
-		print(f"token '{request.match_dict['token']}' not valid")
-		print("")
+		print(f"token '{request.match_dict['token']}' not valid\n")
 		return request.Response(text='ok')
 	pool = await get_nodepool()
+	slack = Slack(url=SLACK_URL)
 	if pool['quantity'] <= RANCHER_VM_MIN:
-		print(f'quantity <= {RANCHER_VM_MIN}')
-		print("")
+		print(f'quantity <= {RANCHER_VM_MIN}\n')
+		slack.post(text="Autoscaler message: Not scaling down, quantity <= "+str(RANCHER_VM_MIN))
 		return request.Response(text='ok')
 	# check if we have Cordoned node
 	cordoned_node, message = await try_cordon_last_node_of_nodepool(pool['links']['nodes'], pool['hostnamePrefix'])
-	slack = Slack(url='{SLACK_URL}')
-	slack.post(text="Autoscaler message"+message)
+	print(f"{message}")
 	if cordoned_node:
-		print(f"{message}")
-		print(f"Not scaling down, cordoning node instead. Waiting for next message...")
-		print(f"")
+		print(f"Not scaling down, cordoning node instead. Waiting for next message...\n")
+		slack.post(text="Autoscaler message: "+message+ "\nNot scaling down, Waiting for next message...")
 		return request.Response(text='ok')
 	old = pool['quantity']
 	pool['quantity'] = pool['quantity'] - 1
