@@ -18,7 +18,7 @@ DELETE_LOCAL_DATA = str(os.getenv('DELETE_LOCAL_DATA', 'false'))
 DRAIN_NODE = str(os.getenv('DRAIN_NODE', 'false'))
 #remove the overhead for vm start up
 MIN_NODE_AGE_SECS = int(os.getenv('MIN_NODE_AGE_SECS', '3600')) - 600
-SLACK_URL = str(os.getenv('SLACK_URL', None)
+SLACK_URL = str(os.getenv('SLACK_URL', None))
 if RANCHER_NODEPOOL_URL is None:
 	print("please set env 'RANCHER_NODEPOOL_URL'")
 
