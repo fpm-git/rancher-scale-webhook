@@ -173,7 +173,7 @@ async def scale_down(request):
 	# check if we have Cordoned node
 	cordoned_node, message = await try_cordon_last_node_of_nodepool(pool['links']['nodes'], pool['hostnamePrefix'])
 	slack = Slack(url='{SLACK_URL}')
-	slack.post(text=message)
+	slack.post(text="Autoscaler message"+message)
 	if cordoned_node:
 		print(f"{message}")
 		print(f"Not scaling down, cordoning node instead. Waiting for next message...")
