@@ -23,12 +23,11 @@ SLACK_URL = str(os.getenv('SLACK_URL', None))
 if RANCHER_NODEPOOL_URL is None:
 	print("please set env 'RANCHER_NODEPOOL_URL'")
 
-
+#Before scaling up the node pool, check if we have a transitioning node or a node that can be uncordoned.
 async def try_uncordon_node_of_nodepool(nodes):
 	global RANCHER_TOKEN
 	global RANCHER_VERIFY_SSL
-	async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=RANCHER_VERIFY_SSL),
-									 headers={"Authorization": f"Bearer {RANCHER_TOKEN}"}) as session:
+	async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=RANCHER_VERIFY_SSL), headers={"Authorization": f"Bearer {RANCHER_TOKEN}"}) as session:
 		async with session.get(f'{nodes}&order=desc&sort=state') as resp:
 			print(f"Attempting to add node. Get node pool rancher api status: {resp.status}")
 			list_nodes = await resp.json()
@@ -47,8 +46,7 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
 	global RANCHER_TOKEN
 	global RANCHER_VERIFY_SSL
 	global RANCHER_VM_MIN
-	async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=RANCHER_VERIFY_SSL),
-									 headers={"Authorization": f"Bearer {RANCHER_TOKEN}"}) as session:
+	async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=RANCHER_VERIFY_SSL), headers={"Authorization": f"Bearer {RANCHER_TOKEN}"}) as session:
 		async with session.get(f'{nodes}&order=desc&sort=hostname') as resp:
 			print(f"Attempting to remove node. Get node pool rancher api status: {resp.status}")
 			list_nodes = await resp.json()
@@ -131,11 +129,16 @@ async def set_nodepool(data):
 async def scale_up(request):
 	global TOKEN
 	global RANCHER_VM_MAX
+	
+	#authentication of requester to autoscaler
 	if request.match_dict['token'] != TOKEN:
 		print(f"token '{request.match_dict['token']}' not valid\n")
 		return request.Response(text='ok')
+
+	#authentication with Rancher
 	pool = await get_nodepool()
-	# check if we have Cordoned node
+
+	# check if we have uncordoned a node
 	uncordoned_node, message = await try_uncordon_node_of_nodepool(pool['links']['nodes'])
 	print(f"{message}")
 	slack = Slack(url=SLACK_URL)
@@ -143,6 +146,7 @@ async def scale_up(request):
 		print(f"Not scaling up, Waiting for next message...\n")
 		slack.post(text="Autoscaler message: "+message+ "\nNot scaling up, Waiting for next message...")
 		return request.Response(text='ok')
+	
 	old = pool['quantity']
 	pool['quantity'] = pool['quantity'] + 1
 	# limit maximum VMs
@@ -150,6 +154,7 @@ async def scale_up(request):
 		print(f"Not scaling up, at maximum number of nodes\n")
 		slack.post(text="Autoscaler message: "+message+ "\nNot scaling up, at maximum number of nodes")
 		return request.Response(text='ok')
+
 	slack.post(text="Autoscaler message: "+message)
 	print(f"scale up {old} --> {pool['quantity']}")
 	await set_nodepool(pool)
@@ -157,16 +162,24 @@ async def scale_up(request):
 
 
 async def scale_down(request):
+	#authentication of requester to autoscaler
 	global TOKEN
 	if request.match_dict['token'] != TOKEN:
 		print(f"token '{request.match_dict['token']}' not valid\n")
 		return request.Response(text='ok')
+	
+	#authentication with Rancher
 	pool = await get_nodepool()
+
+	#setup slack webhook
 	slack = Slack(url=SLACK_URL)
+
+	#if we have reached the minimum number of nodes possible, end request
 	if pool['quantity'] <= RANCHER_VM_MIN:
 		print(f'quantity <= {RANCHER_VM_MIN}\n')
 		slack.post(text="Autoscaler message: Not scaling down, quantity <= "+str(RANCHER_VM_MIN))
 		return request.Response(text='ok')
+
 	# check if we have Cordoned node
 	cordoned_node, message = await try_cordon_last_node_of_nodepool(pool['links']['nodes'], pool['hostnamePrefix'])
 	print(f"{message}")
@@ -174,6 +187,8 @@ async def scale_down(request):
 		print(f"Not scaling down, cordoning node instead. Waiting for next message...\n")
 		slack.post(text="Autoscaler message: "+message+ "\nNot scaling down, Waiting for next message...")
 		return request.Response(text='ok')
+
+	#if we have reached here, scale down the node pool
 	old = pool['quantity']
 	pool['quantity'] = pool['quantity'] - 1
 	print(f"scale down {old} --> {pool['quantity']}")
