@@ -185,7 +185,7 @@ async def scale_down(request):
 	old = pool['quantity']
 	pool['quantity'] = pool['quantity'] - 1
 	print(f"scale down {old} --> {pool['quantity']}")
-	slack.post(text="Autoscaler message: "+message+ "\nscale down "+old+" --> "+pool['quantity'])
+	slack.post(text="Autoscaler message: "+message+ "\nscale down "+str(old)+" --> "+str(pool['quantity']))
 	await set_nodepool(pool)
 	return request.Response(text='ok')
 
