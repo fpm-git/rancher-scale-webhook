@@ -34,11 +34,9 @@ async def try_uncordon_node_of_nodepool(nodes):
 			list_nodes = await resp.json()
 			for node in list_nodes['data']:
 				if node['transitioning'] == "yes":
-					print('Found transitioning node')
 					return True, "Found transitioning node"
 				if node['state'] == "drained" or node['state'] == "cordoned":
 					async with session.post(node['actions']['uncordon']) as resp:
-						print(f"uncordon node rancher api status: {resp.status}")
 						message = "uncordon node rancher api status: "+str(resp.status)
 						uncordon = await resp.text()
 						return True, message
@@ -57,7 +55,6 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
 			# check status if only one VM is transitioning, stop scale down (scaling happened?)
 			for node in list_nodes['data']:
 				if node['transitioning'] == "yes":
-					print('Found transitioning node')
 					return True, "Found transitioning node"
 			node = list_nodes['data'][0]
 			print(f"node state: {node['state']}")
@@ -75,26 +72,22 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
 				if node['state'] == "active":
 					drain_payload = { "deleteLocalData": {DELETE_LOCAL_DATA}, "force": {FORCE_NODE_REMOVAL}, "gracePeriod": -1, "ignoreDaemonSets": {IGNORE_DAEMONSETS}, "timeout": '120' }
 					async with session.post(node['actions']['drain'], data=drain_payload) as resp:
-						print(f"Drain node rancher api status: {resp.status}")
-						message = "Draining active node"
+						message = "Drain node rancher api status: "+resp.status
 						drain = await resp.text()
 						return True, message
 			#otherwise just cordon the node
 			else:
 				if node['state'] == "active":
 					async with session.post(node['actions']['cordon']) as resp:
-						print(f"cordon node rancher api status: {resp.status}")
-						message = "Cordoning active node"
+						message = "Cordon node rancher api status: "+str(resp.status)
 						cordon = await resp.text()
 						return True, message
 			
 			#if nodeage is greater than {MIN_NODE_AGE_SECS} , continue on
 			if nodeage > MIN_NODE_AGE_SECS:
-				print(f"Node is older than {MIN_NODE_AGE_SECS} seconds, good to remove.")
 				message = "Node is older than "+str(MIN_NODE_AGE_SECS)+" seconds, good to remove."
 			else:
-				print(f"Node is younger than {MIN_NODE_AGE_SECS} seconds, to remain cordoned/drained for now.")
-				message = "Node is younger than "+str(MIN_NODE_AGE_SECS)+" seconds, to remain cordoned/drained for now."
+				message = "Node is "+nodeage+" secs old, younger than "+str(MIN_NODE_AGE_SECS)+" seconds, to remain cordoned/drained for now."
 				return True, message
 
 			if node['state'] == "drained" or node['state'] == "cordoned":
@@ -108,7 +101,6 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
 				if percent <= RANCHER_CORDONED_CPU:
 					return False , "Removing node"
 				else:
-					print(f"Node too busy to remove")
 					return True , "Node too busy to remove"
 	return True , "Node not removed"
 
