@@ -85,7 +85,7 @@ async def try_cordon_last_node_of_nodepool(nodes, hostname_prefix):
 			if nodeage > MIN_NODE_AGE_SECS:
 				message = "Node is older than "+str(MIN_NODE_AGE_SECS)+" seconds, good to remove."
 			else:
-				message = "Node is "+nodeage+" secs old, younger than "+str(MIN_NODE_AGE_SECS)+" seconds, to remain cordoned/drained for now."
+				message = "Node is "+str(nodeage)+" secs old, younger than "+str(MIN_NODE_AGE_SECS)+" seconds, to remain cordoned/drained for now."
 				return True, message
 
 			if node['state'] == "drained" or node['state'] == "cordoned":
